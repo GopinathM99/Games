@@ -1,0 +1,377 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    overflow: hidden;
+    color: white;
+}
+
+#game-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+}
+
+#ui-overlay {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 100;
+    pointer-events: none;
+}
+
+#score {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    color: #00ff88;
+    animation: glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+    from {
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5), 0 0 10px rgba(0, 255, 136, 0.5);
+    }
+    to {
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 255, 136, 0.8), 0 0 30px rgba(0, 255, 136, 0.6);
+    }
+}
+
+#game-status {
+    font-size: 18px;
+    opacity: 0.9;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+    color: #ffffff;
+    animation: pulse 3s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 0.9;
+    }
+    50% {
+        opacity: 0.6;
+    }
+}
+
+#game-over-screen {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.8);
+    padding: 40px;
+    border-radius: 15px;
+    text-align: center;
+    z-index: 200;
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    animation: slideIn 0.5s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+#game-over-screen h2 {
+    font-size: 36px;
+    margin-bottom: 20px;
+    color: #ff6b6b;
+    text-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+}
+
+#game-over-screen p {
+    font-size: 20px;
+    margin-bottom: 30px;
+}
+
+#restart-btn {
+    background: linear-gradient(45deg, #4CAF50, #45a049);
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    font-size: 18px;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+#restart-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+#restart-btn:hover::before {
+    left: 100%;
+}
+
+#restart-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    background: linear-gradient(45deg, #45a049, #4CAF50);
+}
+
+.hidden {
+    display: none;
+}
+
+/* Speed Control Styles */
+#speed-control {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.9);
+    padding: 40px;
+    border-radius: 20px;
+    text-align: center;
+    z-index: 150;
+    backdrop-filter: blur(15px);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    animation: slideIn 0.5s ease-out;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+#speed-control h3 {
+    font-size: 28px;
+    margin-bottom: 25px;
+    color: #00ff88;
+    text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+    font-weight: bold;
+}
+
+#speed-buttons {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 30px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.speed-btn {
+    background: linear-gradient(45deg, #3a3a3a, #5a5a5a);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    padding: 15px 20px;
+    font-size: 16px;
+    border-radius: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    position: relative;
+    overflow: hidden;
+    min-width: 100px;
+    font-weight: bold;
+}
+
+.speed-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: left 0.5s;
+}
+
+.speed-btn:hover::before {
+    left: 100%;
+}
+
+.speed-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.speed-btn.active {
+    background: linear-gradient(45deg, #00ff88, #00cc6a);
+    color: #000;
+    border-color: #00ff88;
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+}
+
+.speed-btn.active:hover {
+    background: linear-gradient(45deg, #00cc6a, #00ff88);
+    box-shadow: 0 0 25px rgba(0, 255, 136, 0.6);
+}
+
+#start-game-btn {
+    background: linear-gradient(45deg, #4CAF50, #45a049);
+    color: white;
+    border: none;
+    padding: 18px 35px;
+    font-size: 20px;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    position: relative;
+    overflow: hidden;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+#start-game-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+#start-game-btn:hover::before {
+    left: 100%;
+}
+
+#start-game-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    background: linear-gradient(45deg, #45a049, #4CAF50);
+}
+
+#speed-info {
+    font-size: 18px;
+    margin-bottom: 20px;
+    color: #00ff88;
+    text-shadow: 0 0 5px rgba(0, 255, 136, 0.5);
+}
+
+#change-speed-btn {
+    background: linear-gradient(45deg, #ff9800, #f57c00);
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    font-size: 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    margin-left: 15px;
+    position: relative;
+    overflow: hidden;
+}
+
+#change-speed-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+#change-speed-btn:hover::before {
+    left: 100%;
+}
+
+#change-speed-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    background: linear-gradient(45deg, #f57c00, #ff9800);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    #ui-overlay {
+        top: 10px;
+        left: 10px;
+    }
+    
+    #score {
+        font-size: 20px;
+    }
+    
+    #game-status {
+        font-size: 16px;
+    }
+    
+    #speed-control {
+        padding: 30px 20px;
+        margin: 20px;
+        max-width: calc(100vw - 40px);
+    }
+    
+    #speed-control h3 {
+        font-size: 24px;
+        margin-bottom: 20px;
+    }
+    
+    #speed-buttons {
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 25px;
+    }
+    
+    .speed-btn {
+        padding: 12px 15px;
+        font-size: 15px;
+        min-width: auto;
+        width: 100%;
+    }
+    
+    #start-game-btn {
+        padding: 15px 30px;
+        font-size: 18px;
+        width: 100%;
+    }
+    
+    #game-over-screen {
+        padding: 30px 20px;
+        margin: 20px;
+    }
+    
+    #game-over-screen h2 {
+        font-size: 28px;
+    }
+    
+    #game-over-screen p {
+        font-size: 18px;
+    }
+    
+    #restart-btn {
+        padding: 12px 25px;
+        font-size: 16px;
+        width: 100%;
+        margin-bottom: 10px;
+    }
+    
+    #change-speed-btn {
+        margin-left: 0;
+        width: 100%;
+        padding: 12px 25px;
+    }
+    
+    #speed-info {
+        font-size: 16px;
+    }
+}

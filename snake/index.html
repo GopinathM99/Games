@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Snake Game - Three.js</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <div id="game-container">
+        <div id="ui-overlay">
+            <div id="score">Score: 0</div>
+            <div id="game-status">Press SPACE to start</div>
+        </div>
+        <div id="speed-control" class="hidden">
+            <h3>Choose Speed Level</h3>
+            <div id="speed-buttons">
+                <button class="speed-btn" data-speed="easy">🐌 Easy</button>
+                <button class="speed-btn active" data-speed="normal">🐍 Normal</button>
+                <button class="speed-btn" data-speed="fast">⚡ Fast</button>
+                <button class="speed-btn" data-speed="expert">🚀 Expert</button>
+            </div>
+            <button id="start-game-btn">Start Game</button>
+        </div>
+        <div id="game-over-screen" class="hidden">
+            <h2>Game Over!</h2>
+            <p>Final Score: <span id="final-score">0</span></p>
+            <div id="speed-info">Speed Level: <span id="game-speed-level">Normal</span></div>
+            <button id="restart-btn">Play Again</button>
+            <button id="change-speed-btn">Change Speed</button>
+        </div>
+    </div>
+
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- Game Scripts -->
+    <script src="scripts/World.js"></script>
+    <script src="scripts/Snake.js"></script>
+    <script src="scripts/Food.js"></script>
+    <script src="scripts/Input.js"></script>
+    <script src="scripts/Game.js"></script>
+    <script src="scripts/main.js"></script>
+</body>
+</html>
