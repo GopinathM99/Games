@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fruit Ninja - Hand Tracking</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            overflow: hidden;
+            background: #1a1a2e;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        #gameCanvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        #webcam {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 160px;
+            height: 120px;
+            border: 3px solid #fff;
+            border-radius: 10px;
+            transform: scaleX(-1);
+            z-index: 10;
+        }
+
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        #score {
+            font-size: 48px;
+            font-weight: bold;
+            color: #ffd700;
+        }
+
+        #combo {
+            font-size: 24px;
+            color: #ff6b6b;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        #lives {
+            font-size: 32px;
+            margin-top: 10px;
+        }
+
+        #startScreen, #gameOverScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 100;
+            color: white;
+        }
+
+        #startScreen h1, #gameOverScreen h1 {
+            font-size: 72px;
+            color: #ff6b6b;
+            text-shadow: 4px 4px 8px rgba(0,0,0,0.5);
+            margin-bottom: 20px;
+        }
+
+        #startScreen p, #gameOverScreen p {
+            font-size: 24px;
+            margin-bottom: 30px;
+            text-align: center;
+            max-width: 600px;
+        }
+
+        .btn {
+            padding: 15px 40px;
+            font-size: 24px;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a5a);
+            border: none;
+            border-radius: 30px;
+            color: white;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.6);
+        }
+
+        #finalScore {
+            font-size: 48px;
+            color: #ffd700;
+            margin: 20px 0;
+        }
+
+        #loadingText {
+            color: #aaa;
+            font-size: 18px;
+            margin-top: 20px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <video id="webcam" autoplay playsinline></video>
+
+    <div id="ui" class="hidden">
+        <div id="score">0</div>
+        <div id="combo"></div>
+        <div id="lives"></div>
+    </div>
+
+    <div id="startScreen">
+        <h1>Fruit Ninja</h1>
+        <p>Use your hand to slice falling fruits! Move your index finger across the screen to cut them.</p>
+        <button class="btn" id="startBtn">Start Game</button>
+        <p id="loadingText">Loading hand tracking...</p>
+    </div>
+
+    <div id="gameOverScreen" class="hidden">
+        <h1>Game Over!</h1>
+        <div id="finalScore">Score: 0</div>
+        <button class="btn" id="restartBtn">Play Again</button>
+    </div>
+
+    <!-- MediaPipe Hand Tracking -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1640029074/camera_utils.min.js"></script>
+
+    <script>
+        // Game Configuration
+        const CONFIG = {
+            maxLives: 3,
+            fruitSpawnInterval: 1000,
+            minFruitSpeed: 3,
+            maxFruitSpeed: 6,
+            fruitSize: 50,
+            sliceDistance: 60,
+            comboTimeout: 500,
+            trailLength: 20
+        };
+
+        // Fruit types with colors and emoji
+        const FRUIT_TYPES = [
+            { name: 'apple', color: '#ff4444', emoji: '🍎', points: 10 },
+            { name: 'orange', color: '#ffa500', emoji: '🍊', points: 10 },
+            { name: 'watermelon', color: '#2ecc71', emoji: '🍉', points: 15 },
+            { name: 'banana', color: '#f1c40f', emoji: '🍌', points: 10 },
+            { name: 'grape', color: '#9b59b6', emoji: '🍇', points: 20 },
+            { name: 'strawberry', color: '#e74c3c', emoji: '🍓', points: 15 },
+            { name: 'peach', color: '#ffb347', emoji: '🍑', points: 10 },
+            { name: 'cherry', color: '#c0392b', emoji: '🍒', points: 25 }
+        ];
+
+        // Game state
+        let canvas, ctx;
+        let webcamElement, camera, hands;
+        let gameRunning = false;
+        let score = 0;
+        let lives = CONFIG.maxLives;
+        let combo = 0;
+        let lastSliceTime = 0;
+        let fruits = [];
+        let particles = [];
+        let sliceTrail = [];
+        let handPosition = null;
+        let lastHandPosition = null;
+        let handDetected = false;
+        let modelLoaded = false;
+
+        // DOM elements
+        let scoreEl, comboEl, livesEl, startScreen, gameOverScreen, startBtn, restartBtn, loadingText, uiEl;
+
+        // Initialize
+        function init() {
+            canvas = document.getElementById('gameCanvas');
+            ctx = canvas.getContext('2d');
+            webcamElement = document.getElementById('webcam');
+
+            scoreEl = document.getElementById('score');
+            comboEl = document.getElementById('combo');
+            livesEl = document.getElementById('lives');
+            startScreen = document.getElementById('startScreen');
+            gameOverScreen = document.getElementById('gameOverScreen');
+            startBtn = document.getElementById('startBtn');
+            restartBtn = document.getElementById('restartBtn');
+            loadingText = document.getElementById('loadingText');
+            uiEl = document.getElementById('ui');
+
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            startBtn.addEventListener('click', startGame);
+            restartBtn.addEventListener('click', startGame);
+
+            initHandTracking();
+        }
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        // Hand Tracking Setup
+        async function initHandTracking() {
+            hands = new Hands({
+                locateFile: (file) => {
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/${file}`;
+                }
+            });
+
+            hands.setOptions({
+                maxNumHands: 1,
+                modelComplexity: 1,
+                minDetectionConfidence: 0.7,
+                minTrackingConfidence: 0.5
+            });
+
+            hands.onResults(onHandResults);
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: 640, height: 480 }
+                });
+                webcamElement.srcObject = stream;
+
+                camera = new Camera(webcamElement, {
+                    onFrame: async () => {
+                        await hands.send({ image: webcamElement });
+                    },
+                    width: 640,
+                    height: 480
+                });
+
+                await camera.start();
+                modelLoaded = true;
+                loadingText.textContent = 'Ready! Click Start to play.';
+                startBtn.disabled = false;
+            } catch (error) {
+                console.error('Error accessing webcam:', error);
+                loadingText.textContent = 'Error: Could not access webcam. Please allow camera access.';
+            }
+        }
+
+        function onHandResults(results) {
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                handDetected = true;
+                const landmarks = results.multiHandLandmarks[0];
+                // Use index finger tip (landmark 8) for slicing
+                const indexFinger = landmarks[8];
+
+                // Convert normalized coordinates to canvas coordinates (mirrored)
+                const x = (1 - indexFinger.x) * canvas.width;
+                const y = indexFinger.y * canvas.height;
+
+                lastHandPosition = handPosition;
+                handPosition = { x, y };
+
+                // Add to slice trail
+                sliceTrail.push({ x, y, time: Date.now() });
+                if (sliceTrail.length > CONFIG.trailLength) {
+                    sliceTrail.shift();
+                }
+            } else {
+                handDetected = false;
+            }
+        }
+
+        // Game Functions
+        function startGame() {
+            startScreen.classList.add('hidden');
+            gameOverScreen.classList.add('hidden');
+            uiEl.classList.remove('hidden');
+
+            score = 0;
+            lives = CONFIG.maxLives;
+            combo = 0;
+            fruits = [];
+            particles = [];
+            sliceTrail = [];
+
+            updateUI();
+            gameRunning = true;
+
+            // Start spawning fruits
+            spawnFruit();
+            gameLoop();
+        }
+
+        function gameOver() {
+            gameRunning = false;
+            document.getElementById('finalScore').textContent = `Score: ${score}`;
+            gameOverScreen.classList.remove('hidden');
+            uiEl.classList.add('hidden');
+        }
+
+        function spawnFruit() {
+            if (!gameRunning) return;
+
+            const type = FRUIT_TYPES[Math.floor(Math.random() * FRUIT_TYPES.length)];
+            const x = Math.random() * (canvas.width - 100) + 50;
+
+            fruits.push({
+                x: x,
+                y: canvas.height + CONFIG.fruitSize,
+                vx: (Math.random() - 0.5) * 4,
+                vy: -(CONFIG.minFruitSpeed + Math.random() * (CONFIG.maxFruitSpeed - CONFIG.minFruitSpeed)) * 2,
+                rotation: 0,
+                rotationSpeed: (Math.random() - 0.5) * 0.2,
+                type: type,
+                size: CONFIG.fruitSize,
+                sliced: false
+            });
+
+            // Spawn next fruit
+            const interval = Math.max(400, CONFIG.fruitSpawnInterval - score * 2);
+            setTimeout(spawnFruit, interval);
+        }
+
+        function updateFruits() {
+            const gravity = 0.15;
+
+            for (let i = fruits.length - 1; i >= 0; i--) {
+                const fruit = fruits[i];
+
+                if (fruit.sliced) {
+                    // Update sliced halves
+                    fruit.leftHalf.x += fruit.leftHalf.vx;
+                    fruit.leftHalf.y += fruit.leftHalf.vy;
+                    fruit.leftHalf.vy += gravity;
+                    fruit.leftHalf.rotation += fruit.leftHalf.rotationSpeed;
+
+                    fruit.rightHalf.x += fruit.rightHalf.vx;
+                    fruit.rightHalf.y += fruit.rightHalf.vy;
+                    fruit.rightHalf.vy += gravity;
+                    fruit.rightHalf.rotation += fruit.rightHalf.rotationSpeed;
+
+                    // Remove if off screen
+                    if (fruit.leftHalf.y > canvas.height + 100) {
+                        fruits.splice(i, 1);
+                    }
+                } else {
+                    // Normal fruit physics
+                    fruit.x += fruit.vx;
+                    fruit.y += fruit.vy;
+                    fruit.vy += gravity;
+                    fruit.rotation += fruit.rotationSpeed;
+
+                    // Check if fruit fell off screen (missed)
+                    if (fruit.y > canvas.height + CONFIG.fruitSize && fruit.vy > 0) {
+                        fruits.splice(i, 1);
+                        lives--;
+                        combo = 0;
+                        updateUI();
+
+                        if (lives <= 0) {
+                            gameOver();
+                        }
+                    }
+                }
+            }
+        }
+
+        function checkSlicing() {
+            if (!handPosition || !lastHandPosition) return;
+
+            const dx = handPosition.x - lastHandPosition.x;
+            const dy = handPosition.y - lastHandPosition.y;
+            const speed = Math.sqrt(dx * dx + dy * dy);
+
+            // Only slice if moving fast enough
+            if (speed < 10) return;
+
+            for (const fruit of fruits) {
+                if (fruit.sliced) continue;
+
+                // Check distance from hand to fruit
+                const distX = handPosition.x - fruit.x;
+                const distY = handPosition.y - fruit.y;
+                const dist = Math.sqrt(distX * distX + distY * distY);
+
+                if (dist < CONFIG.sliceDistance) {
+                    sliceFruit(fruit);
+                }
+            }
+        }
+
+        function sliceFruit(fruit) {
+            fruit.sliced = true;
+
+            // Create two halves
+            fruit.leftHalf = {
+                x: fruit.x - 20,
+                y: fruit.y,
+                vx: -3 + Math.random() * -2,
+                vy: -2 + Math.random() * -2,
+                rotation: 0,
+                rotationSpeed: -0.15
+            };
+
+            fruit.rightHalf = {
+                x: fruit.x + 20,
+                y: fruit.y,
+                vx: 3 + Math.random() * 2,
+                vy: -2 + Math.random() * -2,
+                rotation: 0,
+                rotationSpeed: 0.15
+            };
+
+            // Create juice particles
+            for (let i = 0; i < 15; i++) {
+                particles.push({
+                    x: fruit.x,
+                    y: fruit.y,
+                    vx: (Math.random() - 0.5) * 10,
+                    vy: (Math.random() - 0.5) * 10,
+                    size: Math.random() * 8 + 4,
+                    color: fruit.type.color,
+                    life: 1
+                });
+            }
+
+            // Update score and combo
+            const now = Date.now();
+            if (now - lastSliceTime < CONFIG.comboTimeout) {
+                combo++;
+            } else {
+                combo = 1;
+            }
+            lastSliceTime = now;
+
+            score += fruit.type.points * combo;
+            updateUI();
+        }
+
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.2;
+                p.life -= 0.02;
+
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        function updateUI() {
+            scoreEl.textContent = score;
+            livesEl.textContent = '❤️'.repeat(lives) + '🖤'.repeat(CONFIG.maxLives - lives);
+
+            if (combo > 1) {
+                comboEl.textContent = `${combo}x COMBO!`;
+                comboEl.style.opacity = '1';
+            } else {
+                comboEl.style.opacity = '0';
+            }
+        }
+
+        // Rendering
+        function draw() {
+            // Clear canvas with gradient background
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#1a1a2e');
+            gradient.addColorStop(1, '#16213e');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw slice trail
+            drawSliceTrail();
+
+            // Draw particles
+            drawParticles();
+
+            // Draw fruits
+            drawFruits();
+
+            // Draw hand cursor
+            drawHandCursor();
+        }
+
+        function drawSliceTrail() {
+            if (sliceTrail.length < 2) return;
+
+            const now = Date.now();
+
+            ctx.beginPath();
+            ctx.moveTo(sliceTrail[0].x, sliceTrail[0].y);
+
+            for (let i = 1; i < sliceTrail.length; i++) {
+                const point = sliceTrail[i];
+                const age = now - point.time;
+
+                if (age < 200) {
+                    ctx.lineTo(point.x, point.y);
+                }
+            }
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.stroke();
+
+            // Glow effect
+            ctx.strokeStyle = 'rgba(100, 200, 255, 0.4)';
+            ctx.lineWidth = 12;
+            ctx.stroke();
+
+            // Clean old trail points
+            sliceTrail = sliceTrail.filter(p => now - p.time < 200);
+        }
+
+        function drawParticles() {
+            for (const p of particles) {
+                ctx.globalAlpha = p.life;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+        }
+
+        function drawFruits() {
+            for (const fruit of fruits) {
+                if (fruit.sliced) {
+                    // Draw sliced halves
+                    drawFruitHalf(fruit.leftHalf, fruit.type, 'left');
+                    drawFruitHalf(fruit.rightHalf, fruit.type, 'right');
+                } else {
+                    // Draw whole fruit
+                    ctx.save();
+                    ctx.translate(fruit.x, fruit.y);
+                    ctx.rotate(fruit.rotation);
+
+                    // Draw shadow
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                    ctx.beginPath();
+                    ctx.ellipse(5, 5, fruit.size, fruit.size * 0.8, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Draw fruit emoji
+                    ctx.font = `${fruit.size * 1.5}px Arial`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(fruit.type.emoji, 0, 0);
+
+                    ctx.restore();
+                }
+            }
+        }
+
+        function drawFruitHalf(half, type, side) {
+            ctx.save();
+            ctx.translate(half.x, half.y);
+            ctx.rotate(half.rotation);
+
+            // Draw half circle
+            ctx.beginPath();
+            if (side === 'left') {
+                ctx.arc(0, 0, 25, Math.PI / 2, -Math.PI / 2);
+            } else {
+                ctx.arc(0, 0, 25, -Math.PI / 2, Math.PI / 2);
+            }
+            ctx.closePath();
+
+            // Outer color
+            ctx.fillStyle = type.color;
+            ctx.fill();
+
+            // Inner flesh
+            ctx.beginPath();
+            if (side === 'left') {
+                ctx.arc(0, 0, 18, Math.PI / 2, -Math.PI / 2);
+            } else {
+                ctx.arc(0, 0, 18, -Math.PI / 2, Math.PI / 2);
+            }
+            ctx.closePath();
+            ctx.fillStyle = lightenColor(type.color, 40);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function drawHandCursor() {
+            if (!handPosition || !handDetected) return;
+
+            // Draw glowing cursor
+            const gradient = ctx.createRadialGradient(
+                handPosition.x, handPosition.y, 0,
+                handPosition.x, handPosition.y, 30
+            );
+            gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+            gradient.addColorStop(0.5, 'rgba(100, 200, 255, 0.4)');
+            gradient.addColorStop(1, 'rgba(100, 200, 255, 0)');
+
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(handPosition.x, handPosition.y, 30, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Center dot
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(handPosition.x, handPosition.y, 6, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function lightenColor(color, percent) {
+            const num = parseInt(color.replace('#', ''), 16);
+            const amt = Math.round(2.55 * percent);
+            const R = Math.min(255, (num >> 16) + amt);
+            const G = Math.min(255, ((num >> 8) & 0x00FF) + amt);
+            const B = Math.min(255, (num & 0x0000FF) + amt);
+            return `rgb(${R}, ${G}, ${B})`;
+        }
+
+        // Game Loop
+        function gameLoop() {
+            if (!gameRunning) return;
+
+            updateFruits();
+            checkSlicing();
+            updateParticles();
+            draw();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Start when page loads
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

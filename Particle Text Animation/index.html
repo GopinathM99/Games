@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Particle Text Animation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <canvas id="canvas1"></canvas>
+
+    <!-- Top Input Bar -->
+    <div class="input-container">
+        <input type="text" id="textInput" placeholder="Type something..." value="Particles" maxlength="12">
+    </div>
+
+    <!-- Right Side Settings Panel -->
+    <div class="settings-panel">
+        <div class="toggle-panel" id="togglePanel">⚙️</div>
+        <div class="panel-header">
+            <h3>Configuration</h3>
+        </div>
+
+        <div class="control-group">
+            <label>Physics</label>
+            <div class="control-item">
+                <span>Repulsion Radius</span>
+                <input type="range" id="radiusInput" min="0" max="300" value="100">
+            </div>
+            <div class="control-item">
+                <span>Return Speed</span>
+                <input type="range" id="speedInput" min="0.01" max="0.5" step="0.01" value="0.1">
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>Visuals</label>
+            <div class="control-item">
+                <span>Particle Size</span>
+                <input type="range" id="sizeInput" min="1" max="10" step="0.1" value="3">
+            </div>
+            <div class="control-item row">
+                <span>Rainbow Mode</span>
+                <label class="switch">
+                    <input type="checkbox" id="rainbowInput">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+            <div class="control-item row">
+                <span>Color</span>
+                <input type="color" id="colorInput" value="#ffffff">
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>Advanced</label>
+            <div class="control-item">
+                <span>Density (Lower is higher)</span>
+                <input type="range" id="densityInput" min="1" max="10" value="4">
+            </div>
+            <div class="control-item row">
+                <span>Connect Particles</span>
+                <label class="switch">
+                    <input type="checkbox" id="connectInput">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+        </div>
+        <button id="resetBtn" class="reset-btn">Reset Defaults</button>
+    </div>
+
+    <script src="script.js?v=2"></script>
+</body>
+
+</html>
